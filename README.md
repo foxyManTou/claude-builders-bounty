@@ -1,65 +1,39 @@
-# CHANGELOG Generator
+# Destructive Command Guard
 
-A simple bash script that automatically generates a structured `CHANGELOG.md` from a project's git history.
+A Claude Code pre-tool-use hook that intercepts and blocks dangerous bash commands before they execute.
 
-## Setup
-
-```bash
-# 1. Download the script
-curl -O https://raw.githubusercontent.com/foxyManTou/claude-builders-bounty/main/changelog.sh
-
-# 2. Make it executable
-chmod +x changelog.sh
-```
-
-## Usage
+## Installation
 
 ```bash
-# Generate CHANGELOG.md in the current directory
-bash changelog.sh
-
-# Specify output file
-bash changelog.sh CHANGELOG.md
-
-# Specify repo directory
-bash changelog.sh CHANGELOG.md /path/to/repo
+mkdir -p ~/.claude/hooks
+ln -sf "$PWD/block-destructive.sh" ~/.claude/hooks/pre-tool-use
 ```
 
-## How It Works
+That's it. The hook activates automatically on the next Claude Code session.
 
-1. Finds the last git tag (or first commit if no tags exist)
-2. Fetches all commits since that tag
-3. Auto-categorizes commits by conventional commit prefix:
-   - `feat:`, `feature:`, `add:`, `implement:`, `create:`, `introduce:` → **Added**
-   - `fix:`, `bugfix:`, `hotfix:`, `patch:`, `correct:`, `resolve:` → **Fixed**
-   - `change:`, `update:`, `refactor:`, `improve:`, `migrate:`, `perf:`, `optimize:`, `style:` → **Changed**
-   - `remove:`, `delete:`, `deprecate:`, `drop:` → **Removed**
-   - Everything else → **Other**
-4. Outputs a clean `CHANGELOG.md` with commit hashes and authors
+## What It Blocks
 
-## Sample Output
+| Pattern | Risk |
+|---------|------|
+| `rm -rf`, `rm -rf /` | Irreversible file deletion |
+| `DROP TABLE`, `DROP DATABASE` | Database destruction |
+| `TRUNCATE TABLE` | Mass data deletion |
+| `DELETE FROM` without `WHERE` | Unqualified row deletion |
+| `git push --force`, `git push -f` | Force push (history rewrite) |
 
+## What It Logs
+
+Every blocked attempt is logged to `~/.claude/hooks/blocked.log` with:
+- Timestamp
+- Attempted command
+- Project path
+
+## Testing
+
+```bash
+echo "rm -rf /important/data" | bash block-destructive.sh
+# → ⛛ BLOCKED message
+
+echo "ls -la" | bash block-destructive.sh
+# → ls -la (passes through)
 ```
-# Changelog
-
-## [Unreleased] - 2026-07-07
-
-### Added
-- feat: add WebSocket support for real-time updates (#2bd8b5e) by @developer
-- feat: implement rate limiting middleware (#f7d46ba) by @developer
-
-### Fixed
-- fix: correct pagination off-by-one error (#1150a86) by @developer
-- fix: resolve token refresh race condition (#6e33888) by @developer
-
-### Changed
-- refactor: migrate from CommonJS to ESM (#6150e8d) by @developer
-
-### Removed
-- remove: deprecated v1 API endpoints (#9e9501b) by @developer
-```
-
-## Requirements
-
-- `git` (installed by default on most systems)
-- Bash 4+
